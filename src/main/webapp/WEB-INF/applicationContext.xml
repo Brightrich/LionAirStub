@@ -1,0 +1,102 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+       xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-2.0.xsd">
+
+    <import resource="axis2Config.xml" />
+    
+    <bean id="dataSource" class="org.apache.commons.dbcp.BasicDataSource" destroy-method="close">
+        <property name="driverClassName" value="com.mysql.jdbc.Driver" />
+        <property name="url" value="jdbc:mysql://localhost:3306/SMSG" />
+        <property name="username" value="root" />
+        <property name="password" value="root" />
+        <property name="maxActive" value="100" />
+        <property name="maxIdle" value="30" />
+        <property name="maxWait" value="1000" />
+        <property name="defaultAutoCommit" value="true" />
+        <property name="removeAbandoned" value="true" />
+        <property name="removeAbandonedTimeout" value="60" />
+    </bean>
+    
+     <!-- bean id="dataSource" class="org.apache.commons.dbcp.BasicDataSource" destroy-method="close">
+     <property name="driverClassName" value="oracle.jdbc.OracleDriver" /> 
+     <property name="url" value="jdbc:oracle:thin:@localhost:1521:orcl" /> 
+     <property name="username" value="training" /> 
+     <property name="password" value="orcl" /> 
+     <property name="maxActive" value="100" /> 
+     <property name="maxIdle" value="30" /> 
+     <property name="maxWait" value="1000" /> 
+     <property name="defaultAutoCommit" value="true" /> 
+     <property name="removeAbandoned" value="true" /> 
+     <property name="removeAbandonedTimeout" value="60" /> 
+     </bean-->
+    
+    <bean id="jdbcTemplate" class="org.springframework.jdbc.core.JdbcTemplate">
+        <property name="dataSource" ref="dataSource"></property>
+    </bean>
+    
+    <bean id="transactionManager" class="org.springframework.jdbc.datasource.DataSourceTransactionManager">
+        <property name="dataSource" ref="dataSource" />
+    </bean>
+   
+    <bean id="transactionDao" class="org.springframework.transaction.interceptor.TransactionProxyFactoryBean">
+        <property name="transactionManager" ref="transactionManager" />        
+        <property name="target" ref="transactionDaoTarget" />
+        <property name="transactionAttributes">
+            <props>
+                <prop key="save">PROPAGATION_REQUIRED</prop>
+                <prop key="insert*">PROPAGATION_REQUIRED</prop>
+                <prop key="update*">PROPAGATION_REQUIRED</prop>
+            </props>
+        </property>
+    </bean>
+    
+    <bean id="paxDao" class="org.springframework.transaction.interceptor.TransactionProxyFactoryBean">
+        <property name="transactionManager" ref="transactionManager" />        
+        <property name="target" ref="paxDaoTarget" />
+        <property name="transactionAttributes">
+            <props>
+                <prop key="save">PROPAGATION_REQUIRED</prop>
+                <prop key="insert*">PROPAGATION_REQUIRED</prop>
+                <prop key="update*">PROPAGATION_REQUIRED</prop>
+            </props>
+        </property>
+    </bean>
+    
+    <bean id="transactionDaoTarget" class="com.lion.dao.impl.TransactionDaoImpl">
+        <property name="jdbcTemplate" ref="jdbcTemplate"/>
+    </bean>
+    
+    <bean id="paxDaoTarget" class="com.lion.dao.impl.PaxDaoImpl">
+        <property name="jdbcTemplate" ref="jdbcTemplate" />
+    </bean>
+          
+    <bean id="processor" class="com.lion.stub.LionStubWS">        
+        <property name="paxDao" ref="paxDao" />
+        <property name="transactionDao" ref="transactionDao" />               
+    </bean>	
+
+    <bean id="services" class="org.wso2.spring.ws.WebServices">
+        <property name="services">
+            <list>
+                <bean id="ReservationService" class="org.wso2.spring.ws.SpringWebService">
+                    <property name="serviceBean" ref="processor"/>
+                    <property name="serviceName" value="LionStubWS"/>
+                    <property name="excludeOperations">
+                        <list>
+                            <bean id="excludeOp1" class="org.wso2.spring.ws.beans.OperationBean">
+                                <property name="name" value="setTransactionDao"/> 
+                            </bean>   
+                            <bean id="excludeOp2" class="org.wso2.spring.ws.beans.OperationBean">
+                                <property name="name" value="setPaxDao"/> 
+                            </bean>   
+                            <bean id="excludeOp3" class="org.wso2.spring.ws.beans.OperationBean">
+                                <property name="name" value="createDummySchedule"/> 
+                            </bean>                              
+                        </list>
+                    </property>
+                </bean>                
+            </list>
+        </property>
+    </bean>
+</beans>
